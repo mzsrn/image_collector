@@ -21,10 +21,10 @@ module ImageCollector
       "image/webm" => "webm"
     }.freeze
 
-    def initialize from:, dest:, max_size: 5, keep: true
+    def initialize from:, dest:, max_size: 5, max_redirects: 5, keep: false
       abort 'Source file does not exist' unless File.exists?(from)
       abort 'Destination folder does not exist' unless File.directory?(dest)
-      @from, @dest, @max_size, @keep = from, dest, max_size, keep
+      @from, @dest, @max_size, @max_redirects, @keep = from, dest, max_size, max_redirects, keep
     end
     
     def download
@@ -32,6 +32,9 @@ module ImageCollector
       idx = 0
       File.open(@from).each_line(' ') do |line| 
         idx += 1
+        if ((line.strip =~ URI::regexp(["http", "https"])) != 0)
+          return $stdout.puts "Error: item ##{idx}: '#{line}' is not valid URI"
+        end
         process(line.strip, idx) 
       end
     end
@@ -39,9 +42,14 @@ module ImageCollector
     private
 
     def process line, idx
-      return $stdout.puts "Error: item ##{idx}: '#{line}' is not invalid URI" unless ((line.strip =~ URI::regexp(["http", "https"])) == 0)
       @url = URI(line)
-      # Firstly make just HEAD request to make sure that remote image is really image, it exists and it is smaller then 5 MB 
+
+      # Firstly make just HEAD request to make sure that remote link 
+      # * does not contain too many redirects;
+      # * is really image; 
+      # * actually exists; 
+      # * is smaller then max_size.
+      @redirects_count = 0
       @head_response = make_head_request
       return if head_response_is_invalid?
 
@@ -49,23 +57,35 @@ module ImageCollector
       return $stdout.puts "Info: item ##{idx}: '#{line}' is already saved as #{file_path}" if (@keep && already_downloaded?) 
 
       save(idx)
-    rescue URI::InvalidURIError => e
-      puts "Invalid URI #{e.inspect}" 
     rescue Error => e
-      puts "#{e.class}: #{e.message}"
+      $stdout.puts "Error: item ##{idx}: '#{line}' #{e.message}"
     end
 
 
     def make_head_request
       Net::HTTP.start(@url.host, @url.port, use_ssl: use_ssl?) do |http|
         request = Net::HTTP::Head.new(@url)
-        http.request(request)
+        response = http.request(request)
+        if response.code.start_with? "3"
+          @redirects_count += 1
+          prevent_too_many_redirects(response) 
+        end
+        response
+      end
+    end
+
+    def prevent_too_many_redirects response
+      @url = URI(response.header['location'])
+      if @redirects_count < @max_redirects
+        make_head_request
+      else
+        raise NotFound, "too many redirects"
       end
     end
 
     def head_response_is_invalid?
       response = @head_response
-      raise NotFound, "file was not found" if response.code.to_i >= 400 || response.content_length.to_i == 0
+      raise NotFound, "file was not found" if response.code.start_with? "4" || response.content_length.to_i == 0
       raise TooLarge, "file is too large, max available size is #{@max_size} MB" if response.content_length > (@max_size * 1024 * 1024)
       raise InvalidContentType, "file extension is not allowed" unless ALLOWED_MIME_DICTIONARY.keys.include? response.content_type
       return false

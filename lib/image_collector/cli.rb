@@ -16,6 +16,7 @@ module ImageCollector
         from: "",
         dest: "/tmp",
         max_size: 5,
+        max_redirects: 5,
         keep: false
       }
       OptionParser.new do |opts|
@@ -34,6 +35,10 @@ module ImageCollector
         end
 
         opts.on("-k", "--keep", "Do not overwrite already downloaded images") do |v|
+          options[:keep] = true 
+        end
+      
+        opts.on("-r", "--max-redirects", "Max allowable redirects number") do |v|
           options[:keep] = v 
         end
       
