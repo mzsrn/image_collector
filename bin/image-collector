@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require 'image_collector/cli'
+
+ImageCollector::CLI.new.run(ARGV)

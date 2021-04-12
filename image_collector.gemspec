@@ -14,4 +14,7 @@ Gem::Specification.new "image_collector" do |spec|
   spec.files       = Dir["{lib}/**/*", "README.md"]
   spec.require_paths = ["lib"]
 
+  spec.bindir        = 'bin'
+  spec.executables   = 'image-collector'
+
 end
