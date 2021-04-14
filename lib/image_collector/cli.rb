@@ -6,40 +6,55 @@ module ImageCollector
 
     def run argv
       options = parse_options(argv)
-      ImageCollector::Downloader.new(from: options[:from], dest: options[:dest], max_size: options[:max_size], max_redirects: options[:max_redirects], keep: options[:keep]).download
+      ImageCollector::Downloader.new(**options).download
     end
   
     private
   
     def parse_options argv
       options = {
-        from: "",
+        source: "",
         dest: "/tmp",
         max_size: 5,
         max_redirects: 5,
-        keep: false
+        max_timeout: 5,
+        max_retries: 1,
+        keep: false,
+        sep: ' '
       }
       OptionParser.new do |opts|
         opts.banner = "Usage: image-downloader -f path/to/source_list.txt -d path/to/destination [options]"
       
-        opts.on("-f", "--from [STRING]", String, "Path to source file") do |v|
-          options[:from] = v 
+        opts.on("-s", "--source STRING", String, "Path to source file") do |v|
+          options[:source] = v 
         end
       
         opts.on("-d", "--destination folder STRING", String, "Path to destination folder, default is the current folder") do |v|
           options[:dest] = v 
         end
 
-        opts.on("-m", "--max-size NUMBER", Integer, "Max image size (MB), default 5 MB")  do |v|
+        opts.on("-m", "--max-size NUMBER", Integer, "Maximum allowed image size in MB (default: 5)")  do |v|
           options[:max_size] = v
         end
 
-        opts.on("-k", "--keep", "Do not overwrite already downloaded images") do |v|
+        opts.on("--max-redirects NUMBER", Integer, "Maximum allowed redirects number (default: 5)")  do |v|
+          options[:max_redirects] = v
+        end
+
+        opts.on("--max-timeout NUMBER", Integer, "Maximum allowed timeout value in seconds (default: 2)")  do |v|
+          options[:max_timeout] = v
+        end
+
+        opts.on("--max-retries NUMBER", Integer, "Maximum allowed redirects number (default: 1)")  do |v|
+          options[:max_retries] = v
+        end
+
+        opts.on("-k", "--keep", "Keep existing output images (default false)") do |v|
           options[:keep] = true 
         end
-      
-        opts.on("-r", "--max-redirects", "Max allowable redirects number") do |v|
-          options[:max_redirects] = v 
+
+        opts.on("--sep STRING", String, "separator used in `source` parsing (default: whitespace)") do |v|
+          options[:sep] = v
         end
       
         opts.on('-h', '--help', 'Displays Help') do
