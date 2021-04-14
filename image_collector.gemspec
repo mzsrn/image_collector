@@ -17,4 +17,8 @@ Gem::Specification.new "image_collector" do |spec|
   spec.bindir        = 'bin'
   spec.executables   = 'image-collector'
 
+  spec.add_development_dependency "rake", '~> 13.0'
+  spec.add_development_dependency "rspec", '~> 3.10'
+  spec.add_development_dependency "webmock", '~> 3.12'
+  spec.add_development_dependency "byebug", '~> 11.1'
 end

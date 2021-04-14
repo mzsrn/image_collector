@@ -6,7 +6,7 @@ module ImageCollector
 
     def run argv
       options = parse_options(argv)
-      ImageCollector::Downloader.new(from: options[:from], dest: options[:dest], max_size: options[:max_size], keep: options[:keep]).download
+      ImageCollector::Downloader.new(from: options[:from], dest: options[:dest], max_size: options[:max_size], max_redirects: options[:max_redirects], keep: options[:keep]).download
     end
   
     private
@@ -39,7 +39,7 @@ module ImageCollector
         end
       
         opts.on("-r", "--max-redirects", "Max allowable redirects number") do |v|
-          options[:keep] = v 
+          options[:max_redirects] = v 
         end
       
         opts.on('-h', '--help', 'Displays Help') do

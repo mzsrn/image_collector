@@ -33,7 +33,7 @@ module ImageCollector
       File.open(@from).each_line(' ') do |line| 
         idx += 1
         if ((line.strip =~ URI::regexp(["http", "https"])) != 0)
-          return $stdout.puts "Error: item ##{idx}: '#{line}' is not valid URI"
+          return $stdout.puts "Error: item ##{idx} - '#{line}' is not valid URI"
         end
         process(line.strip, idx) 
       end
@@ -54,11 +54,11 @@ module ImageCollector
       return if head_response_is_invalid?
 
       # Then make sure we do not have the same image already downloaded
-      return $stdout.puts "Info: item ##{idx}: '#{line}' is already saved as #{file_path}" if (@keep && already_downloaded?) 
+      return $stdout.puts "Info: item ##{idx} - '#{line}' is already saved as #{file_path}" if (@keep && already_downloaded?) 
 
       save(idx)
     rescue Error => e
-      $stdout.puts "Error: item ##{idx}: '#{line}' #{e.message}"
+      $stdout.puts "Error: item ##{idx} - '#{line}' #{e.message}"
     end
 
 
@@ -85,7 +85,7 @@ module ImageCollector
 
     def head_response_is_invalid?
       response = @head_response
-      raise NotFound, "file was not found" if response.code.start_with? "4" || response.content_length.to_i == 0
+      raise NotFound, "file was not found" if (response.code.start_with?("4") || (response.content_length.to_i == 0))
       raise TooLarge, "file is too large, max available size is #{@max_size} MB" if response.content_length > (@max_size * 1024 * 1024)
       raise InvalidContentType, "file extension is not allowed" unless ALLOWED_MIME_DICTIONARY.keys.include? response.content_type
       return false
@@ -98,7 +98,7 @@ module ImageCollector
             # Write in chunks to avoid potential extra memory consumption
             http.read_body{|chunk| f.write chunk }
           end
-          $stdout.puts "Success: item ##{idx}: '#{@url.to_s}' was saved as #{file_path}" 
+          $stdout.puts "Success: item ##{idx} - '#{@url.to_s}' was saved as #{file_path}" 
         rescue StandardError => e
           FileUtils.rm(f)
           raise e
