@@ -1,3 +1,4 @@
 *.gem
 .ruby-version
 setup
+.byebug_history

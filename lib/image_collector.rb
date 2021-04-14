@@ -6,6 +6,7 @@ module ImageCollector
   class Error < StandardError; end
   class NotFound < Error; end
   class TooLarge < Error; end
+  class TimeoutError < Error; end
   class InvalidContentType < Error; end
 
   class Downloader
@@ -21,19 +22,21 @@ module ImageCollector
       "image/webm" => "webm"
     }.freeze
 
-    def initialize from:, dest:, max_size: 5, max_redirects: 5, keep: false
-      abort 'Source file does not exist' unless File.exists?(from)
+    def initialize source:, dest:, max_size: 5, max_redirects: 5, max_timeout: 2, max_retries: 1, keep: false, sep: " "
+      abort 'Source file does not exist' unless File.exists?(source)
       abort 'Destination folder does not exist' unless File.directory?(dest)
-      @from, @dest, @max_size, @max_redirects, @keep = from, dest, max_size, max_redirects, keep
+      @source, @dest, @keep, @sep = source, dest, keep, sep
+      @max_size, @max_redirects, @max_timeout, @max_retries = max_size, max_redirects, max_timeout, max_retries
     end
     
     def download
-      # use #each_line since we don't know how large the input file is. 
       idx = 0
-      File.open(@from).each_line(' ') do |line| 
+      # use #each_line since we don't know how large the input file is. 
+      File.open(@source).each_line(@sep) do |line| 
         idx += 1
-        if ((line.strip =~ URI::regexp(["http", "https"])) != 0)
-          return $stdout.puts "Error: item ##{idx} - '#{line}' is not valid URI"
+        unless is_valid_url?(line.strip)
+          $stdout.puts "Error: item ##{idx} - '#{line}' is not valid URL"
+          next 
         end
         process(line.strip, idx) 
       end
@@ -44,13 +47,15 @@ module ImageCollector
     def process line, idx
       @url = URI(line)
 
-      # Firstly make just HEAD request to make sure that remote link 
-      # * does not contain too many redirects;
-      # * is really image; 
-      # * actually exists; 
-      # * is smaller then max_size.
       @redirects_count = 0
       @head_response = make_head_request
+
+      # Firstly make just HEAD request to make sure that remote link 
+      # * actually exists; 
+      # * does not contain too many redirects;
+      # * is really image; 
+      # * is smaller then max_size;
+      # * responds in timeout.
       return if head_response_is_invalid?
 
       # Then make sure we do not have the same image already downloaded
@@ -63,7 +68,13 @@ module ImageCollector
 
 
     def make_head_request
-      Net::HTTP.start(@url.host, @url.port, use_ssl: use_ssl?) do |http|
+      options = {
+        use_ssl: use_ssl?,
+        max_retries: @max_retries, 
+        read_timeout: @max_timeout, 
+        open_timeout: @max_timeout
+      }
+      Net::HTTP.start(@url.host, @url.port, **options) do |http|
         request = Net::HTTP::Head.new(@url)
         response = http.request(request)
         if response.code.start_with? "3"
@@ -72,6 +83,10 @@ module ImageCollector
         end
         response
       end
+    rescue Net::ReadTimeout, Net::OpenTimeout
+      raise TimeoutError, "timeout error"
+    rescue SocketError
+      raise Error, "failed to open TCP connection"
     end
 
     def prevent_too_many_redirects response
@@ -99,7 +114,7 @@ module ImageCollector
             http.read_body{|chunk| f.write chunk }
           end
           $stdout.puts "Success: item ##{idx} - '#{@url.to_s}' was saved as #{file_path}" 
-        rescue StandardError => e
+        rescue Exception => e
           FileUtils.rm(f)
           raise e
         end
@@ -108,6 +123,13 @@ module ImageCollector
 
     def use_ssl?
       @url.is_a? URI::HTTPS
+    end
+
+    def is_valid_url? line
+      uri = URI.parse(line)
+      %w(http https).include?(uri.scheme) && !uri.host.nil?
+    rescue URI::InvalidURIError
+      false
     end
 
     def file_path
