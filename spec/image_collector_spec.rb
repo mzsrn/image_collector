@@ -1,19 +1,18 @@
 require 'spec_helper'
-require 'image_collector'
+require 'image_collector/downloader'
 require 'webmock/rspec'
 
 RSpec.describe ImageCollector::Downloader do
 
   after(:each) { FileUtils.rm_rf(Dir['spec/downloads/*'].reject{|name| name == '.keep'}) }
-  subject { described_class.new(arguments) }
+  subject { described_class.new(*arguments.values) }
 
   # Inputs
-  let(:source) { 'spec/fixtures/urls.txt' }
   let(:dest) { 'spec/downloads' }
   let(:max_size) { 1 }
   let(:max_redirects) { 2 }
   let(:keep) { false }
-  let(:arguments) { { source: source, dest: dest, max_size: max_size, max_redirects: max_redirects, keep: keep } }
+  let(:arguments) { { line: url, idx: 1, dest: dest, max_size: max_size, max_redirects: max_redirects, keep: keep } }
 
   # Stub Valid Response
   let(:url) { "http://dummy.com/image.jpg" }
@@ -35,7 +34,7 @@ RSpec.describe ImageCollector::Downloader do
 
     it 'save file on disk' do
       expect do
-        subject.download
+        subject.process
         expect(File.exists? expected_path).to be true
       end.to output(/was saved as/).to_stdout
     end
@@ -47,7 +46,7 @@ RSpec.describe ImageCollector::Downloader do
 
     shared_examples_for "invalid HEAD response" do
       it 'should raise an error and put message to STDOUT' do
-        expect{subject.download}.to output(/#{expected_error_message}/).to_stdout
+        expect{subject.process}.to output(/#{expected_error_message}/).to_stdout
       end
     end
 
