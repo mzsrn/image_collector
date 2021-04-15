@@ -1,12 +1,13 @@
 # ImageCollector
 
-Simple tool to download a list of images from a plain text file. 
+Simple tool to download a list of images from a plain text file. Single-thread as well as multi-thread modes are available. 
 
 ## Usage
 ### Via CLI
 ```shell
-  gem install image_collector
-  image-collector -f tmp/images.txt -d tmp -k -m 1 --max-timeout 1 --sep \; > out.log
+  bundle install
+  rake install
+  image-collector -f tmp/images.txt -d tmp -k -m 1 --max-timeout 1 -c --sep \; > out.log
 ```
 
 To get more parameters info please use `image-collector --help`
@@ -14,7 +15,7 @@ To get more parameters info please use `image-collector --help`
 ### Via ruby console
 ```rb
 require 'image_collector'
-ImageCollector::Downloader.new(source: 'tmp/images.txt', dest: 'tmp', max_size: '10', , max_redirects: 5, max_retries: 3, keep: true, sep: ' ').download
+ImageCollector::Downloader.new(source: 'tmp/images.txt', dest: 'tmp', max_size: '10', , max_redirects: 5, max_retries: 3, keep: true, sep: ' ', concurrently: true).download
 ```
 
 #### Arguments
@@ -26,6 +27,7 @@ ImageCollector::Downloader.new(source: 'tmp/images.txt', dest: 'tmp', max_size: 
 * `max_retries` - maximum allowed redirects number (default: 1);
 * `keep` - keep existing output images (default `false`);
 * `sep` - separator used in `source` parsing (default: `' '`).
+* `concurrently` - enable multi-thread mode (default: `false`).
 
 ## Features
 
@@ -38,6 +40,11 @@ Before actual downloading tool firstly sends HEAD request to make sure, that rem
 * responds in `max_timeout`.
 
 If you pass the flag `-k` url-based sha-256 digest will be calculated. If there is a image with name equals that digest and with the same extension and its modification time is later than the header `Last-Modified` value, the image will not be overwritten.
+
+## Run tests
+```shell
+rake spec
+```
 
 ## TODO
 * FTP support

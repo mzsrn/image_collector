@@ -1,7 +1,7 @@
 module ImageCollector
   class DownloadManager
 
-    def initialize source:, dest:, max_size: 5, max_redirects: 5, max_timeout: 2, max_retries: 1, keep: false, sep: " ", concurrently: true
+    def initialize source:, dest:, max_size: 5, max_redirects: 5, max_timeout: 2, max_retries: 1, keep: false, sep: " ", concurrently: false
       abort 'Source file does not exist' unless File.exists?(source)
       abort 'Destination folder does not exist' unless File.directory?(dest)
       @source, @sep, @concurrently = source, sep, concurrently
