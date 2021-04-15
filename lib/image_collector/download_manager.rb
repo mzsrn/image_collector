@@ -1,3 +1,4 @@
+require 'image_collector/downloader'
 module ImageCollector
   class DownloadManager
 

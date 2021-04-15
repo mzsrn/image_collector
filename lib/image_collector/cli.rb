@@ -1,4 +1,4 @@
-require 'image_collector'
+require 'image_collector/download_manager'
 require 'optparse'
 
 module ImageCollector
@@ -6,7 +6,7 @@ module ImageCollector
 
     def run argv
       options = parse_options(argv)
-      ImageCollector::Downloader.new(**options).download
+      ImageCollector::DownloadManager.new(**options).download
     end
   
     private
@@ -15,6 +15,7 @@ module ImageCollector
       options = {
         source: "",
         dest: "/tmp",
+        concurrently: false,
         max_size: 5,
         max_redirects: 5,
         max_timeout: 5,
@@ -29,8 +30,12 @@ module ImageCollector
           options[:source] = v 
         end
       
-        opts.on("-d", "--destination folder STRING", String, "Path to destination folder, default is the current folder") do |v|
+        opts.on("-d", "--destination STRING", String, "Path to destination folder, default is the current folder") do |v|
           options[:dest] = v 
+        end
+              
+        opts.on("-c", "--concurrently", "Enable multi-thread mode (default: false)") do |v|
+          options[:concurrently] = true 
         end
 
         opts.on("-m", "--max-size NUMBER", Integer, "Maximum allowed image size in MB (default: 5)")  do |v|
