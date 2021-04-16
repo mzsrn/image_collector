@@ -2,6 +2,9 @@ require 'image_collector/downloader'
 module ImageCollector
   class DownloadManager
 
+    THREAD_COUNT = 5
+    QUEUE_SIZE = 100
+
     def initialize source:, dest:, max_size: 5, max_redirects: 5, max_timeout: 2, max_retries: 1, keep: false, sep: " ", concurrently: false
       abort 'Source file does not exist' unless File.exists?(source)
       abort 'Destination folder does not exist' unless File.directory?(dest)
@@ -10,22 +13,23 @@ module ImageCollector
     end
 
     def download
-      if @concurrently
-        count = 5
-        queue, threads = start_workers count
-        file_iterator(@source, @sep).each do |line, idx|
+      if concurrently
+        queue, threads = start_workers
+        file_iterator(source, sep).each do |line, idx|
           queue.push([line, idx])
         end
-        count.times { queue.push :terminate }
+        THREAD_COUNT.times { queue.push :terminate }
         threads.each(&:join)
       else
-        file_iterator(@source, @sep).each do |line, idx|
-          ImageCollector::Downloader.new(line, idx, *@args).process
+        file_iterator(source, sep).each do |line, idx|
+          ImageCollector::Downloader.new(line, idx, *args).process
         end
       end
     end
 
     private
+
+    attr_reader :source, :sep, :concurrently, :args
 
     def file_iterator source, sep
       Enumerator.new do |y|
@@ -44,13 +48,13 @@ module ImageCollector
       end
     end
 
-    def start_workers count
-      queue = SizedQueue.new(100)
-      threads = count.times.map do
+    def start_workers
+      queue = SizedQueue.new(QUEUE_SIZE)
+      threads = THREAD_COUNT.times.map do
         Thread.new(queue) do |queue|
           while pair = queue.pop
             break if pair == :terminate
-            ImageCollector::Downloader.new(*pair, *@args).process
+            ImageCollector::Downloader.new(*pair, *args).process
           end
         end
       end

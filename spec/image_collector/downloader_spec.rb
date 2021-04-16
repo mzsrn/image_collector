@@ -1,6 +1,4 @@
 require 'spec_helper'
-require 'image_collector/downloader'
-require 'webmock/rspec'
 
 RSpec.describe ImageCollector::Downloader do
 
